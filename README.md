@@ -6,11 +6,11 @@ Gas fee subsidise with WATT tokens and ERC4331
 
 ## Live App
 
-TBD
+https://gas-free-wallet-with-watt.vercel.app/
 
 ## Video Demo
 
-TBD
+https://youtu.be/TEIjDpaNae4
 
 ## Pitch Deck
 
@@ -29,3 +29,9 @@ WATT Paymaster provides smart gas fee functions in Newcoin Ecosystem.
 The paymaster checks the WATT balance of the account abstraction wallet. If the balance is above a certain threshold, the transaction gas fee becomes free for the user.
 
 ![diagram](./docs/diagram.png)
+
+## Reference
+
+### Account Abstraction Tx with WATT paymaster.
+
+https://www.jiffyscan.xyz/userOpHash/0x12a115372c1ccbec00a9acacd4320fd7bf30315334600ee199b2644fae4dde13?network=goerli
