@@ -7,7 +7,7 @@ pragma solidity ^0.8.9;
 import "@account-abstraction/contracts/core/BasePaymaster.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 
-contract WattPaymaster is BasePaymaster {
+contract WATTPaymaster is BasePaymaster {
 
     // WATTContract
     IERC20 public watt;
