@@ -174,8 +174,17 @@ export default function Home() {
                 <p className="text-gray-700 text-sm">{ethBalance} ETH</p>
               </div>
               <div className="mb-4">
-                <label className="block text-gray-700 font-bold">WATT Balance</label>
-                <p className="text-gray-700 text-sm">{wattBalance} WATT</p>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <label className="block text-gray-700 font-bold">WATT Balance</label>
+
+                    <p className="text-gray-700 text-sm">{wattBalance} WATT</p>
+                  </div>
+
+                  <button className="bg-white border-gray-500 border hover:bg-gray-200 text-gray-800 py-1 px-2 rounded focus:outline-none focus:shadow-outline-gray text-xs">
+                    Mint Mock WATT
+                  </button>
+                </div>
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 font-bold mb-2">Connect dApps with Wallet Connect</label>
