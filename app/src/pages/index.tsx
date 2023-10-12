@@ -10,6 +10,15 @@ import { useEthersSigner } from "@/hooks/useEthers";
 import { ethers } from "ethers";
 import { entryPointAddress, factoryAddress } from "@/lib/contracts";
 
+import { Core } from "@walletconnect/core";
+import { Web3Wallet } from "@walletconnect/web3wallet";
+import {
+  SESSION_REQUEST_ETH_SIGN,
+  SESSION_REQUEST_ETH_SIGN_V4,
+  SESSION_REQUEST_PERSONAL_SIGN,
+  SESSION_REQUEST_SEND_TRANSACTION,
+} from "@/lib/wallet-connect";
+
 const cormorant = Cormorant({ subsets: ["latin"] });
 
 const provider = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/eth_goerli");
@@ -27,6 +36,10 @@ export default function Home() {
   const [walletConenctURI, setWalletConnectURI] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const [web3Wallet, setWeb3Wallet] = useState<any>();
+  const [isDAppsConnected, setIsDAppsConnected] = useState(false);
+  const [topic, setTopic] = useState("");
+
   const [id, setId] = useState(0);
   const [to, setTo] = useState("");
   const [data, setData] = useState("");
@@ -34,22 +47,77 @@ export default function Home() {
   const [hash, setHash] = useState("");
 
   useEffect(() => {
-    if (!signer) {
-      return;
-    }
-    const walletAPI = new SimpleAccountAPI({
-      provider,
-      entryPointAddress: entryPointAddress,
-      owner: signer,
-      factoryAddress: factoryAddress,
-    });
-    setAccountAPI(walletAPI);
-    walletAPI.getAccountAddress().then((accountAddress) => {
-      setAccountAbstractionWaleltAddress(accountAddress);
-      provider.getBalance(accountAddress).then((balance) => {
-        setETHBalance(ethers.utils.formatEther(balance));
+    (async () => {
+      if (!signer) {
+        return;
+      }
+      const walletAPI = new SimpleAccountAPI({
+        provider,
+        entryPointAddress: entryPointAddress,
+        owner: signer,
+        factoryAddress: factoryAddress,
       });
-    });
+      setAccountAPI(walletAPI);
+      const accountAbstractionWalletAddress = await walletAPI.getAccountAddress();
+      setAccountAbstractionWaleltAddress(accountAbstractionWalletAddress);
+      const balance = await provider.getBalance(accountAbstractionWalletAddress);
+      setETHBalance(ethers.utils.formatEther(balance));
+      const metadata = {
+        name: "zkSync SSI Wallet",
+        description: "Empower your crypto journey with credentials.",
+        url: "http://localhost:3000",
+        icons: [],
+      };
+      const core = new Core({
+        projectId: "cffe9608a02c00c7947b9afd9dacbc70",
+      });
+      const web3Wallet = await Web3Wallet.init({
+        core,
+        metadata,
+      });
+      web3Wallet.on("session_proposal", async (proposal) => {
+        const session = await web3Wallet.approveSession({
+          id: proposal.id,
+          namespaces: {
+            eip155: {
+              chains: ["eip155:5"],
+              methods: [
+                SESSION_REQUEST_SEND_TRANSACTION,
+                SESSION_REQUEST_ETH_SIGN,
+                SESSION_REQUEST_PERSONAL_SIGN,
+                SESSION_REQUEST_ETH_SIGN_V4,
+              ],
+              events: ["chainChanged", "accountsChanged"],
+              accounts: [`eip155:5:${accountAbstractionWalletAddress}`],
+            },
+          },
+        });
+        setIsDAppsConnected(true);
+        setTopic(session.topic);
+      });
+      web3Wallet.on("session_request", async (request) => {
+        if (request.params.request.method === "eth_sendTransaction") {
+          console.log("eth_sendTransaction");
+          const id = request.id;
+          const to = request.params.request.params[0].to;
+          const data = request.params.request.params[0].data;
+          const value = request.params.request.params[0].value;
+          setId(id);
+          setTo(to);
+          setData(data);
+          setValue(value);
+          setIsModalOpen(true);
+        }
+      });
+      setWeb3Wallet(web3Wallet);
+      const sessions = await web3Wallet.getActiveSessions();
+      const isDAppsConnected = Object.keys(sessions).length > 0;
+      setIsDAppsConnected(isDAppsConnected);
+      if (isDAppsConnected) {
+        const topic = Object.keys(sessions)[0];
+        setTopic(topic);
+      }
+    })();
   }, [signer]);
 
   useEffect(() => {
@@ -111,20 +179,49 @@ export default function Home() {
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 font-bold mb-2">Connect dApps with Wallet Connect</label>
-                <input
-                  className="shadow appearance-none border rounded w-full p-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline text-xs"
-                  type="text"
-                  placeholder="wc:"
-                  value={walletConenctURI}
-                  onChange={(e) => setWalletConnectURI(e.target.value)}
-                />
+                {!isDAppsConnected && (
+                  <>
+                    <input
+                      className="shadow appearance-none border rounded w-full p-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline text-xs mb-2"
+                      type="text"
+                      placeholder="wc:"
+                      value={walletConenctURI}
+                      onChange={(e) => setWalletConnectURI(e.target.value)}
+                    />
+                    <button
+                      className="w-full bg-white border-gray-500 border hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline-gray"
+                      type="button"
+                      onClick={async () => {
+                        if (!web3Wallet) {
+                          return;
+                        }
+                        await web3Wallet.core.pairing.pair({
+                          uri: walletConenctURI,
+                        });
+                      }}
+                    >
+                      Connect dApps
+                    </button>
+                  </>
+                )}
+                {isDAppsConnected && (
+                  <>
+                    <button
+                      className="w-full bg-white border-gray-500 border hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline-gray"
+                      disabled={!isDAppsConnected}
+                      onClick={async () => {
+                        if (!web3Wallet) {
+                          return;
+                        }
+                        await web3Wallet.disconnectSession({ topic });
+                        setIsDAppsConnected(false);
+                      }}
+                    >
+                      Disconnect
+                    </button>
+                  </>
+                )}
               </div>
-              <button
-                className="w-full bg-white border-gray-500 border hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline-gray"
-                type="button"
-              >
-                Connect dApps
-              </button>
             </form>
           )}
         </section>
