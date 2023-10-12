@@ -1,18 +1,28 @@
 import { Cormorant } from "next/font/google";
-import { useState } from "react";
+
+import { useEffect, useState } from "react";
 import { useIsConnected } from "@/hooks/useIsConnected";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 
+import { SimpleAccountAPI, HttpRpcClient } from "@account-abstraction/sdk";
+import { useEthersSigner } from "@/hooks/useEthers";
+import { ethers } from "ethers";
+import { entryPointAddress, factoryAddress } from "@/lib/contracts";
+
 const cormorant = Cormorant({ subsets: ["latin"] });
+
+const provider = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/eth_goerli");
 
 export default function Home() {
   const { isConnected } = useIsConnected();
   const { openConnectModal } = useConnectModal();
   const { address } = useAccount();
+  const signer = useEthersSigner();
 
+  const [accountAPI, setAccountAPI] = useState<SimpleAccountAPI>();
   const [accountAbstractionWaleltAddress, setAccountAbstractionWaleltAddress] = useState("");
-  const [ethBalance, setETHTBalance] = useState("0");
+  const [ethBalance, setETHBalance] = useState("0");
   const [wattBalance, setWATTBalance] = useState("0");
   const [walletConenctURI, setWalletConnectURI] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,6 +32,36 @@ export default function Home() {
   const [data, setData] = useState("");
   const [value, setValue] = useState("");
   const [hash, setHash] = useState("");
+
+  useEffect(() => {
+    if (!signer) {
+      return;
+    }
+    const walletAPI = new SimpleAccountAPI({
+      provider,
+      entryPointAddress: entryPointAddress,
+      owner: signer,
+      factoryAddress: factoryAddress,
+    });
+    setAccountAPI(walletAPI);
+    walletAPI.getAccountAddress().then((accountAddress) => {
+      setAccountAbstractionWaleltAddress(accountAddress);
+      provider.getBalance(accountAddress).then((balance) => {
+        setETHBalance(ethers.utils.formatEther(balance));
+      });
+    });
+  }, [signer]);
+
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, [isModalOpen]);
 
   return (
     <div className={`min-h-screen bg-white text-gray-800 ${cormorant.className}`}>
@@ -55,19 +95,19 @@ export default function Home() {
             <form className="bg-gray-100 p-4 rounded shadow-md">
               <div className="mb-4">
                 <label className="block text-gray-700 font-bold">Connected Wallet</label>
-                <p className="text-gray-700 text-xs">{address}</p>
+                <p className="text-gray-700 text-sm">{address}</p>
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 font-bold">Account Abstraction Wallet</label>
-                <p className="text-gray-700 text-xs">{accountAbstractionWaleltAddress}</p>
+                <p className="text-gray-700 text-sm">{accountAbstractionWaleltAddress}</p>
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 font-bold">ETH Balance</label>
-                <p className="text-gray-700 text-xs">{ethBalance} ETH</p>
+                <p className="text-gray-700 text-sm">{ethBalance} ETH</p>
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 font-bold">WATT Balance</label>
-                <p className="text-gray-700 text-xs">{wattBalance} WATT</p>
+                <p className="text-gray-700 text-sm">{wattBalance} WATT</p>
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 font-bold mb-2">Connect dApps with Wallet Connect</label>
