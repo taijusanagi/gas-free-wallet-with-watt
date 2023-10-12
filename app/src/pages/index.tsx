@@ -3,12 +3,12 @@ import { Cormorant } from "next/font/google";
 import { useEffect, useState } from "react";
 import { useIsConnected } from "@/hooks/useIsConnected";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { useAccount } from "wagmi";
+import { useAccount, useDisconnect } from "wagmi";
 
 import { SimpleAccountAPI, HttpRpcClient } from "@account-abstraction/sdk";
 import { useEthersSigner } from "@/hooks/useEthers";
-import { ethers } from "ethers";
-import { entryPointAddress, factoryAddress, paymasterAddress } from "@/lib/contracts";
+import { ethers, Contract } from "ethers";
+import { entryPointAddress, factoryAddress, paymasterAddress, wattAddress } from "@/lib/contracts";
 
 import { Core } from "@walletconnect/core";
 import { Web3Wallet } from "@walletconnect/web3wallet";
@@ -19,6 +19,8 @@ import {
   SESSION_REQUEST_SEND_TRANSACTION,
 } from "@/lib/wallet-connect";
 
+import WATTMockJson from "@/lib/abi/WATTMock.json";
+
 const cormorant = Cormorant({ subsets: ["latin"] });
 
 const provider = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/eth_goerli");
@@ -26,11 +28,12 @@ const provider = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/eth_
 export default function Home() {
   const { isConnected } = useIsConnected();
   const { openConnectModal } = useConnectModal();
+  const { disconnect } = useDisconnect();
   const { address } = useAccount();
   const signer = useEthersSigner();
 
   const [accountAPI, setAccountAPI] = useState<SimpleAccountAPI>();
-  const [accountAbstractionWaleltAddress, setAccountAbstractionWaleltAddress] = useState("");
+  const [accountAbstractionWalletAddress, setaccountAbstractionWalletAddress] = useState("");
   const [ethBalance, setETHBalance] = useState("0");
   const [wattBalance, setWATTBalance] = useState("0");
   const [walletConenctURI, setWalletConnectURI] = useState("");
@@ -59,9 +62,12 @@ export default function Home() {
       });
       setAccountAPI(walletAPI);
       const accountAbstractionWalletAddress = await walletAPI.getAccountAddress();
-      setAccountAbstractionWaleltAddress(accountAbstractionWalletAddress);
-      const balance = await provider.getBalance(accountAbstractionWalletAddress);
-      setETHBalance(ethers.utils.formatEther(balance));
+      setaccountAbstractionWalletAddress(accountAbstractionWalletAddress);
+      const ethBalance = await provider.getBalance(accountAbstractionWalletAddress);
+      setETHBalance(ethers.utils.formatEther(ethBalance));
+      const contract = new Contract(wattAddress, WATTMockJson.abi, provider);
+      const wattBalance = await contract.balanceOf(accountAbstractionWalletAddress);
+      setWATTBalance(wattBalance.toString());
       const metadata = {
         name: "zkSync SSI Wallet",
         description: "Empower your crypto journey with credentials.",
@@ -142,11 +148,20 @@ export default function Home() {
             Connect Wallet
           </button>
         )}
+        {isConnected && (
+          <button
+            className="bg-white border-gray-500 border hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline-gray"
+            onClick={() => disconnect()}
+          >
+            Disconnect Wallet
+          </button>
+        )}
       </header>
-      <main className="flex flex-col items-center justify-center h-full py-32">
+      <main className={`flex flex-col items-center justify-center h-full ${isConnected ? "py-24" : "py-48"}`}>
         <section className="w-full max-w-md mb-8">
+          <h1 className="text-6xl font-bold text-center">🪪</h1>
           <h1 className="text-3xl font-bold mb-2 text-center">WATT Paymaster</h1>
-          <h1 className="text-md font-bold text-center">Gas fee subsidise with WATT tokens</h1>
+          <h1 className="text-md font-bold text-center">Gas fee subsidise with WATT tokens and ERC4331</h1>
         </section>
         <section className="w-full max-w-md p-2">
           {!isConnected && (
@@ -167,7 +182,7 @@ export default function Home() {
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 font-bold">Account Abstraction Wallet</label>
-                <p className="text-gray-700 text-sm">{accountAbstractionWaleltAddress}</p>
+                <p className="text-gray-700 text-sm">{accountAbstractionWalletAddress}</p>
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 font-bold">ETH Balance</label>
@@ -179,7 +194,20 @@ export default function Home() {
                     <label className="block text-gray-700 font-bold">WATT Balance</label>
                     <p className="text-gray-700 text-sm">{wattBalance} WATT</p>
                   </div>
-                  <button className="bg-white border-gray-500 border hover:bg-gray-200 text-gray-800 py-1 px-2 rounded focus:outline-none focus:shadow-outline-gray text-xs">
+                  <button
+                    className="bg-white border-gray-500 border hover:bg-gray-200 text-gray-800 py-1 px-2 rounded focus:outline-none focus:shadow-outline-gray text-xs"
+                    onClick={async () => {
+                      if (!signer) {
+                        return;
+                      }
+                      const contract = new Contract(wattAddress, WATTMockJson.abi, signer);
+                      const tx = await contract.mint(accountAbstractionWalletAddress);
+                      await tx.wait();
+                      const wattBalance = contract.balanceOf(accountAbstractionWalletAddress);
+                      setWATTBalance(wattBalance.toString());
+                    }}
+                    type="button"
+                  >
                     Mint WATT
                   </button>
                 </div>
@@ -233,7 +261,7 @@ export default function Home() {
           )}
         </section>
       </main>
-      {isModalOpen && (
+      {isConnected && isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2">
           <div className="absolute inset-0 bg-black opacity-50" onClick={() => setIsModalOpen(false)}></div>
           <div className="relative z-10 bg-white p-4 rounded-xl shadow-lg max-w-xl w-full mx-4">
@@ -249,7 +277,7 @@ export default function Home() {
             >
               <div className="mb-4">
                 <label className="form-label block text-gray-700 font-bold mb-2">From</label>
-                <p className="text-xs">{accountAbstractionWaleltAddress}</p>
+                <p className="text-xs">{accountAbstractionWalletAddress}</p>
               </div>
               <div className="mb-4">
                 <label className="form-label block text-gray-700 font-bold mb-2">To</label>
@@ -294,9 +322,9 @@ export default function Home() {
             </button>
             {hash && (
               <>
-                <label className="form-label block text-gray-700 font-bold mb-2">Tx Hash</label>
+                <label className="form-label block text-gray-700 font-bold mt-4 mb-2">Request ID</label>
                 <p className="text-xs mb-2 text-blue-600">
-                  <a href={`https://goerli.explorer.zksync.io/tx/${hash}`}>{hash}</a>
+                  <a href={`https://www.jiffyscan.xyz/userOpHash/${hash}?network=goerli`}>{hash}</a>
                 </p>
               </>
             )}
