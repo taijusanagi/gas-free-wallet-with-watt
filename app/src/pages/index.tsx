@@ -18,35 +18,31 @@ export default function Home() {
         <section className="w-full max-w-md">
           <form className="bg-gray-100 p-4 rounded shadow-md">
             <div className="mb-4">
-              <label className="block text-gray-700 font-bold mb-2" htmlFor="username">
-                Username
-              </label>
+              <label className="block text-gray-700 font-bold">Connected Wallet</label>
+              <p className="text-gray-700 text-xs">p</p>
+            </div>
+            <div className="mb-4">
+              <label className="block text-gray-700 font-bold">Account Abstraction Wallet</label>
+              <p className="text-gray-700 text-xs">p</p>
+            </div>
+            <div className="mb-4">
+              <label className="block text-gray-700 font-bold">WATT Balance</label>
+              <p className="text-gray-700 text-xs">p</p>
+            </div>
+            <div className="mb-4">
+              <label className="block text-gray-700 font-bold mb-2">Connect dApps with Wallet Connect</label>
               <input
                 className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                id="username"
                 type="text"
-                placeholder="Username"
+                placeholder="wc:"
               />
             </div>
-            <div className="mb-6">
-              <label className="block text-gray-700 font-bold mb-2" htmlFor="password">
-                Password
-              </label>
-              <input
-                className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                id="password"
-                type="password"
-                placeholder="********"
-              />
-            </div>
-            <div className="flex items-center justify-end">
-              <button
-                className="bg-white border-gray-500 border hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline-gray"
-                type="button"
-              >
-                Sign In
-              </button>
-            </div>
+            <button
+              className="w-full bg-white border-gray-500 border hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline-gray"
+              type="button"
+            >
+              Connect Wallet
+            </button>
           </form>
         </section>
       </main>
