@@ -8,7 +8,7 @@ import { useAccount } from "wagmi";
 import { SimpleAccountAPI, HttpRpcClient } from "@account-abstraction/sdk";
 import { useEthersSigner } from "@/hooks/useEthers";
 import { ethers } from "ethers";
-import { entryPointAddress, factoryAddress } from "@/lib/contracts";
+import { entryPointAddress, factoryAddress, paymasterAddress } from "@/lib/contracts";
 
 import { Core } from "@walletconnect/core";
 import { Web3Wallet } from "@walletconnect/web3wallet";
@@ -148,7 +148,7 @@ export default function Home() {
           <h1 className="text-3xl font-bold mb-2 text-center">WATT Paymaster</h1>
           <h1 className="text-md font-bold text-center">Gas fee subsidise with WATT tokens</h1>
         </section>
-        <section className="w-full max-w-md">
+        <section className="w-full max-w-md p-2">
           {!isConnected && (
             <div className="flex justify-center">
               <button
@@ -177,12 +177,10 @@ export default function Home() {
                 <div className="flex justify-between items-center">
                   <div>
                     <label className="block text-gray-700 font-bold">WATT Balance</label>
-
                     <p className="text-gray-700 text-sm">{wattBalance} WATT</p>
                   </div>
-
                   <button className="bg-white border-gray-500 border hover:bg-gray-200 text-gray-800 py-1 px-2 rounded focus:outline-none focus:shadow-outline-gray text-xs">
-                    Mint Mock WATT
+                    Mint WATT
                   </button>
                 </div>
               </div>
@@ -238,7 +236,7 @@ export default function Home() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2">
           <div className="absolute inset-0 bg-black opacity-50" onClick={() => setIsModalOpen(false)}></div>
-          <div className="relative z-10 bg-white py-4 px-6 rounded-xl shadow-lg max-w-xl w-full mx-4">
+          <div className="relative z-10 bg-white p-4 rounded-xl shadow-lg max-w-xl w-full mx-4">
             <header className="flex justify-between items-center mb-2">
               <h2 className="text-sm font-bold text-gray-700">Tx Preview</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-2xl text-gray-400 hover:text-gray-500">
@@ -269,6 +267,28 @@ export default function Home() {
             <button
               className="w-full bg-white border-gray-500 border hover:bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline-gray"
               disabled={!!hash}
+              onClick={async () => {
+                if (!accountAPI) {
+                  return;
+                }
+                const httpRPCClient = new HttpRpcClient(
+                  "https://api.stackup.sh/v1/node/c589455678a18f482e3ec75a2e226eeed6294e928c175558410543de304165c6",
+                  entryPointAddress,
+                  5
+                );
+                const unsignedUserOp = await accountAPI.createUnsignedUserOp({
+                  target: to,
+                  data,
+                  value,
+                });
+                unsignedUserOp.preVerificationGas = 500000;
+                unsignedUserOp.paymasterAndData = paymasterAddress;
+                const signedUserOp = await accountAPI.signUserOp(unsignedUserOp);
+                const result = await httpRPCClient.sendUserOpToBundler(signedUserOp);
+                setHash(result);
+                const response = { id, result, jsonrpc: "2.0" };
+                await web3Wallet.respondSessionRequest({ topic, response });
+              }}
             >
               Send Tx
             </button>
